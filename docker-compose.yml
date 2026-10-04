@@ -1,0 +1,75 @@
+# Mybrain pilot stack for a small VPS (4 GB RAM / 2 vCPU).
+#   docker compose up -d --build
+#   docker compose --profile public up -d   # adds Caddy with HTTPS + basic auth (set DOMAIN, BASIC_USER, BASIC_HASH)
+services:
+  db:
+    # ParadeDB = Postgres + pg_search (true BM25, ICU tokenizer for Persian) + pgvector.
+    # If you prefer plain Postgres, use pgvector/pgvector:pg17 and the app falls back to tsvector automatically.
+    image: paradedb/paradedb:latest
+    environment:
+      POSTGRES_USER: mybrain
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: mybrain
+    volumes:
+      - pgdata:/var/lib/postgresql/
+    shm_size: 256m
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "work_mem=32MB", "-c", "maintenance_work_mem=256MB"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mybrain -d mybrain"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://mybrain:${POSTGRES_PASSWORD:-change-me}@db:5432/mybrain
+      DATA_DIR: /data
+    volumes:
+      - data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"   # bind to localhost; expose via Tailscale or the caddy profile
+    command: ["sh", "-c", "mybrain-migrate && uvicorn mybrain.main:app --host 0.0.0.0 --port 8000"]
+    restart: unless-stopped
+
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://mybrain:${POSTGRES_PASSWORD:-change-me}@db:5432/mybrain
+      DATA_DIR: /data
+    volumes:
+      - data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["mybrain-worker"]
+    mem_limit: 1500m          # parsing is the memory hog; one document at a time
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    profiles: ["public"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      BASIC_USER: ${BASIC_USER:-me}
+      BASIC_HASH: ${BASIC_HASH:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  data:
+  caddy_data:

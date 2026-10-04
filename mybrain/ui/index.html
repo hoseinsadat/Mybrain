@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mybrain</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --text:#e6e8ee; --muted:#9aa3b2; --accent:#6ea8fe; --ok:#3fb950; --warn:#d29922; --bad:#f85149; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Vazirmatn", sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:10px 20px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  header .health { color:var(--muted); font-size:12px; }
+  nav button { background:none; border:1px solid var(--line); color:var(--text); padding:6px 12px; border-radius:6px; cursor:pointer; }
+  nav button.active { border-color:var(--accent); color:var(--accent); }
+  main { max-width:1200px; margin:0 auto; padding:20px; }
+  section { display:none; } section.active { display:block; }
+  textarea, input[type=text], input[type=search], select { width:100%; background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:8px; font:inherit; }
+  textarea { min-height:70px; }
+  button.primary { background:var(--accent); color:#0b0d11; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:600; }
+  button.small { background:none; border:1px solid var(--line); color:var(--text); padding:3px 8px; border-radius:5px; cursor:pointer; font-size:12px; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; margin:12px 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .answer { white-space:pre-wrap; direction:auto; unicode-bidi:plaintext; font-size:16px; }
+  .answer sup a { color:var(--accent); text-decoration:none; margin:0 1px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:start; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .chunk { direction:auto; unicode-bidi:plaintext; white-space:pre-wrap; max-height:140px; overflow:auto; font-size:13px; color:#cfd3dc; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; border:1px solid var(--line); color:var(--muted); margin-inline-end:4px; }
+  .ok { color:var(--ok);} .warn { color:var(--warn);} .bad { color:var(--bad);} 
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media (max-width:800px) { .grid { grid-template-columns:1fr; } }
+  a { color:var(--accent); }
+  .clickable { cursor:pointer; }
+  pre { white-space:pre-wrap; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧠 Mybrain</h1>
+  <nav>
+    <button data-tab="ask" class="active">Ask</button>
+    <button data-tab="docs">Documents</button>
+    <button data-tab="entities">Entities</button>
+    <button data-tab="jobs">Jobs</button>
+    <button data-tab="eval">Eval</button>
+  </nav>
+  <span class="health" id="health">…</span>
+</header>
+<main>
+  <section id="ask" class="active">
+    <textarea id="question" placeholder="Ask about a company, a person, a deal… (English or فارسی)"></textarea>
+    <div class="row">
+      <button class="primary" id="askBtn">Ask</button>
+      <button class="small" id="searchBtn">Retrieve only</button>
+      <label><input type="checkbox" id="optPlanner" checked> planner</label>
+      <label><input type="checkbox" id="optRerank" checked> rerank</label>
+      <label><input type="checkbox" id="optSecond" checked> second pass</label>
+      <span class="muted" id="askStatus"></span>
+    </div>
+    <div id="askOut"></div>
+  </section>
+
+  <section id="docs">
+    <div class="card">
+      <form id="uploadForm" class="row">
+        <input type="file" id="files" multiple>
+        <input type="text" id="upTitle" placeholder="title (single file)" style="max-width:220px">
+        <select id="upSource" style="max-width:160px">
+          <option value="upload">document</option><option value="email">email</option><option value="chat">chat</option>
+          <option value="note">meeting note</option><option value="spreadsheet">spreadsheet</option><option value="database">database</option><option value="web">web/news</option>
+        </select>
+        <input type="text" id="upTags" placeholder="tags, comma separated" style="max-width:220px">
+        <button class="primary" type="submit">Upload</button>
+        <span class="muted" id="upStatus"></span>
+      </form>
+      <div class="muted">PDF, DOCX, PPTX, XLSX, CSV, SQLite, EML, MBOX, WhatsApp/Telegram exports, Markdown, TXT, HTML, JSON.</div>
+    </div>
+    <div class="row"><input type="search" id="docSearch" placeholder="filter by title or filename" style="max-width:320px"><button class="small" id="docRefresh">Refresh</button></div>
+    <div id="docList"></div>
+    <div id="docDetail"></div>
+  </section>
+
+  <section id="entities">
+    <div class="row"><input type="search" id="entSearch" placeholder="search people and organizations (any script)" style="max-width:360px">
+      <select id="entType" style="max-width:160px"><option value="">all types</option><option value="person">person</option><option value="organization">organization</option><option value="place">place</option><option value="other">other</option></select>
+      <button class="small" id="entRefresh">Search</button></div>
+    <div class="grid"><div id="entList"></div><div id="entDetail"></div></div>
+  </section>
+
+  <section id="jobs">
+    <div class="row"><button class="small" id="jobRefresh">Refresh</button></div>
+    <div id="jobList"></div>
+  </section>
+
+  <section id="eval">
+    <div class="card">
+      <div class="row">
+        <input type="text" id="evalSet" placeholder="eval set name" style="max-width:200px">
+        <input type="text" id="evalLabel" placeholder="run label" style="max-width:200px">
+        <label><input type="checkbox" id="evalPlanner" checked> planner</label>
+        <label><input type="checkbox" id="evalRerank" checked> rerank</label>
+        <label><input type="checkbox" id="evalSecond"> second pass</label>
+        <input type="text" id="evalRerankProvider" placeholder="rerank provider override" style="max-width:200px">
+        <button class="primary" id="evalRun">Run eval</button>
+        <span class="muted" id="evalStatus"></span>
+      </div>
+      <div class="muted">Create sets with <code>mybrain-eval --set NAME --file eval/questions.jsonl</code> or POST /api/eval/sets. See docs/EVAL.md.</div>
+    </div>
+    <div id="evalSets"></div>
+    <div id="evalRuns"></div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let token = sessionStorage.getItem('mybrain_token') || '';
+
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const r = await fetch(path, Object.assign({}, opts, { headers }));
+  if (r.status === 401) {
+    token = prompt('Password') || '';
+    sessionStorage.setItem('mybrain_token', token);
+    if (token) return api(path, opts);
+  }
+  if (!r.ok) { let msg = r.statusText; try { msg = (await r.json()).detail || msg; } catch (e) {} throw new Error(msg); }
+  return r.json();
+}
+
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === b.dataset.tab));
+  ({docs: loadDocs, entities: loadEntities, jobs: loadJobs, eval: loadEval})[b.dataset.tab]?.();
+}));
+
+async function loadHealth() {
+  try {
+    const h = await api('/healthz');
+    $('#health').textContent = `${h.documents} docs · ${h.chunks} chunks · ${h.entities} entities · index ${h.index_version.name} (${h.index_version.embedding}) · lexical ${h.lexical_backend} · rerank ${h.reranker} · answer ${h.answer_model}` + (h.pending_jobs ? ` · ${h.pending_jobs} jobs pending` : '');
+  } catch (e) { $('#health').textContent = 'health: ' + e.message; }
+}
+
+function renderAnswer(text) {
+  let html = esc(text);
+  html = html.replace(/\[(\d+)\]/g, (m, n) => `<sup><a href="#cite-${n}">[${n}]</a></sup>`);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  return html;
+}
+
+function chunkTable(chunks) {
+  if (!chunks?.length) return '<div class="muted">no chunks</div>';
+  return `<table><tr><th>#</th><th>source</th><th>scores</th><th>text</th></tr>` + chunks.map((c, i) => `<tr id="cite-${i+1}">
+    <td>${i+1}</td>
+    <td><b>${esc(c.title || c.filename)}</b><div class="muted">${esc(c.breadcrumb || '')}${c.page ? ' · p.' + c.page : ''}${c.doc_date ? ' · ' + c.doc_date : ''}</div>
+      <span class="badge">${esc(c.source_type)}</span>${c.entity_hit ? '<span class="badge">entity</span>' : ''}</td>
+    <td class="muted">fused ${c.fused_score}<br>rerank ${c.rerank_score == null ? '–' : c.rerank_score.toFixed(3)}<br>vec #${c.vector_rank ?? '–'} · lex #${c.lexical_rank ?? '–'}</td>
+    <td><div class="chunk">${esc(c.context ? c.context + '\n— ' : '')}${esc(c.text)}</div></td></tr>`).join('') + '</table>';
+}
+
+function entityCards(ents) {
+  if (!ents?.length) return '';
+  return ents.map(p => `<div class="card"><b class="clickable" onclick="showEntity('${p.id}')">${esc(p.canonical_name)}</b> <span class="badge">${esc(p.type)}</span>
+    <span class="muted">${esc([p.name_en, p.name_fa].filter(x => x && x !== p.canonical_name).join(' / '))}</span>
+    <div>${esc(p.description || '')}</div>
+    ${(p.relationships || []).slice(0, 8).map(r => `<div class="muted">• ${esc(r.subject)} — ${esc(r.predicate)} — ${esc(r.object)}${r.valid_from || r.valid_to ? ' [' + (r.valid_from || '?') + ' → ' + (r.valid_to || 'now') + ']' : ''}</div>`).join('')}
+  </div>`).join('');
+}
+
+async function ask(retrieveOnly) {
+  const q = $('#question').value.trim(); if (!q) return;
+  $('#askStatus').textContent = retrieveOnly ? 'retrieving…' : 'thinking…';
+  $('#askOut').innerHTML = '';
+  const body = { question: q, use_planner: $('#optPlanner').checked, use_rerank: $('#optRerank').checked, second_pass: $('#optSecond').checked };
+  try {
+    const r = await api(retrieveOnly ? '/api/search' : '/api/ask', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    const t = r.timings_ms || {}; const total = Object.values(t).reduce((a, b) => a + b, 0);
+    $('#askStatus').textContent = `${total} ms (${Object.entries(t).map(([k, v]) => k + ' ' + v).join(', ')})`;
+    let html = '';
+    if (!retrieveOnly) {
+      html += `<div class="card"><div class="answer">${renderAnswer(r.answer)}</div>
+        <div class="row muted">model ${esc(r.model)} · ${r.usage?.input_tokens ?? '?'} in / ${r.usage?.output_tokens ?? '?'} out tokens
+        <button class="small" onclick="feedback(${r.query_log_id}, 1)">👍</button><button class="small" onclick="feedback(${r.query_log_id}, -1)">👎</button></div></div>`;
+      if (r.citations?.length) html += `<div class="card"><b>Citations</b>` + r.citations.map(c => `<div class="muted">[${c.marker}] <b>${esc(c.title)}</b>${c.page ? ' p.' + c.page : ''}: “${esc((c.cited_text || '').slice(0, 300))}”</div>`).join('') + '</div>';
+    }
+    const plan = r.plan || {};
+    html += `<div class="card"><b>Plan</b> <span class="muted">intent ${esc(plan.intent)} · lang ${esc(plan.language)}${(r.config?.second_pass_queries || r.second_pass_queries || []).length ? ' · second pass: ' + esc((r.config?.second_pass_queries || r.second_pass_queries).join(' | ')) : ''}</span>
+      <div class="muted">queries: ${(plan.queries || []).map(esc).join(' | ')}</div>
+      <div class="muted">entities: ${(plan.entities || []).map(e => esc(e.name)).join(', ') || '–'}</div></div>`;
+    html += entityCards(r.entities);
+    html += `<div class="card"><b>Retrieved chunks</b> <span class="muted">${r.candidates ?? ''} candidates</span>${chunkTable(r.chunks)}</div>`;
+    $('#askOut').innerHTML = html;
+  } catch (e) { $('#askStatus').textContent = 'error: ' + e.message; }
+}
+$('#askBtn').addEventListener('click', () => ask(false));
+$('#searchBtn').addEventListener('click', () => ask(true));
+$('#question').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) ask(false); });
+async function feedback(id, score) { if (!id) return; await api('/api/feedback', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ query_log_id: id, score }) }); }
+
+// documents
+$('#uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData();
+  for (const f of $('#files').files) fd.append('files', f);
+  if ($('#upTitle').value) fd.append('title', $('#upTitle').value);
+  fd.append('source_type', $('#upSource').value);
+  if ($('#upTags').value) fd.append('tags', $('#upTags').value);
+  $('#upStatus').textContent = 'uploading…';
+  try { const r = await api('/api/documents', { method: 'POST', body: fd }); $('#upStatus').textContent = `${r.length} file(s) queued`; $('#files').value = ''; loadDocs(); }
+  catch (err) { $('#upStatus').textContent = 'error: ' + err.message; }
+});
+const statusClass = s => ({ready: 'ok', failed: 'bad', queued: 'warn', parsing: 'warn', indexing: 'warn', running: 'warn', done: 'ok'})[s] || '';
+async function loadDocs() {
+  const q = $('#docSearch').value.trim();
+  const docs = await api('/api/documents' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  $('#docList').innerHTML = docs.length ? `<table><tr><th>title</th><th>type</th><th>status</th><th>pages/chunks</th><th>date</th><th></th></tr>` + docs.map(d => `<tr>
+    <td class="clickable" onclick="showDoc('${d.id}')"><b>${esc(d.title || d.filename)}</b><div class="muted">${esc(d.filename)} · ${esc(d.parser || '')}</div></td>
+    <td><span class="badge">${esc(d.source_type)}</span>${d.lang ? '<span class="badge">' + esc(d.lang) + '</span>' : ''}</td>
+    <td class="${statusClass(d.status)}">${esc(d.status)}${d.error ? '<div class="muted">' + esc(d.error.slice(0, 120)) + '</div>' : ''}</td>
+    <td class="muted">${d.page_count ?? '–'} / ${d.chunk_count ?? '–'}</td><td class="muted">${d.doc_date || ''}</td>
+    <td><button class="small" onclick="reingest('${d.id}')">re-index</button> <button class="small" onclick="delDoc('${d.id}')">delete</button></td></tr>`).join('') + '</table>' : '<div class="muted">no documents yet</div>';
+}
+async function showDoc(id) {
+  const d = await api('/api/documents/' + id);
+  $('#docDetail').innerHTML = `<div class="card"><b>${esc(d.title || d.filename)}</b> <span class="muted">${esc(d.status)} · ${esc(d.parser || '')} · ${d.bytes} bytes</span>
+    <div>${(d.entities || []).map(e => `<span class="badge clickable" onclick="showEntity('${e.id}')">${esc(e.canonical_name)} (${e.mentions})</span>`).join(' ')}</div>
+    <pre class="chunk" style="max-height:300px">${esc(d.text_preview)}</pre>
+    <div class="muted">jobs: ${(d.jobs || []).map(j => j.kind + ' ' + j.status + (j.error ? ' – ' + esc(j.error.slice(0, 200)) : '')).join(' · ')}</div>
+    <a href="/api/documents/${id}/text" target="_blank">full parsed text</a></div>`;
+}
+async function reingest(id) { await api(`/api/documents/${id}/reingest`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reparse: confirm('Re-parse the file too? (Cancel = re-index only)') }) }); loadDocs(); }
+async function delDoc(id) { if (!confirm('Delete this document and its chunks?')) return; await api('/api/documents/' + id, { method: 'DELETE' }); $('#docDetail').innerHTML = ''; loadDocs(); }
+$('#docRefresh').addEventListener('click', loadDocs);
+$('#docSearch').addEventListener('change', loadDocs);
+
+// entities
+async function loadEntities() {
+  const q = $('#entSearch').value.trim(); const t = $('#entType').value;
+  const ents = await api(`/api/entities?limit=100${q ? '&q=' + encodeURIComponent(q) : ''}${t ? '&type=' + t : ''}`);
+  $('#entList').innerHTML = ents.length ? `<table><tr><th>name</th><th>type</th><th>mentions</th><th>rel.</th></tr>` + ents.map(e => `<tr class="clickable" onclick="showEntity('${e.id}')">
+    <td><b>${esc(e.canonical_name)}</b><div class="muted">${esc([e.name_en, e.name_fa].filter(x => x && x !== e.canonical_name).join(' / '))}</div><div class="muted">${esc((e.description || '').slice(0, 120))}</div></td>
+    <td><span class="badge">${esc(e.type)}</span></td><td>${e.mention_count}</td><td>${e.relationship_count}</td></tr>`).join('') + '</table>' : '<div class="muted">no entities (yet)</div>';
+}
+async function showEntity(id) {
+  document.querySelector('nav button[data-tab=entities]').click();
+  const p = await api('/api/entities/' + id);
+  $('#entDetail').innerHTML = entityCards([p]) + `<div class="card"><b>Mentions</b>` + (p.mentions || []).map(m => `<div class="muted">• <b>${esc(m.title)}</b>${m.page ? ' p.' + m.page : ''}${m.doc_date ? ' · ' + m.doc_date : ''}: ${esc((m.snippet || '').slice(0, 200))}</div>`).join('') + '</div>';
+}
+$('#entRefresh').addEventListener('click', loadEntities);
+$('#entSearch').addEventListener('keydown', e => { if (e.key === 'Enter') loadEntities(); });
+
+// jobs
+async function loadJobs() {
+  const jobs = await api('/api/jobs?limit=100');
+  $('#jobList').innerHTML = jobs.length ? `<table><tr><th>id</th><th>document</th><th>kind</th><th>status</th><th>attempts</th><th>error</th><th></th></tr>` + jobs.map(j => `<tr>
+    <td>${j.id}</td><td>${esc(j.title || j.filename || j.document_id || '')}</td><td>${esc(j.kind)}</td><td class="${statusClass(j.status)}">${esc(j.status)}</td><td>${j.attempts}</td>
+    <td class="muted">${esc((j.error || '').slice(0, 200))}</td><td>${j.status === 'failed' ? `<button class="small" onclick="retryJob(${j.id})">retry</button>` : ''}</td></tr>`).join('') + '</table>' : '<div class="muted">no jobs</div>';
+}
+async function retryJob(id) { await api(`/api/jobs/${id}/retry`, { method: 'POST' }); loadJobs(); }
+$('#jobRefresh').addEventListener('click', loadJobs);
+
+// eval
+async function loadEval() {
+  const sets = await api('/api/eval/sets'); const runs = await api('/api/eval/runs');
+  $('#evalSets').innerHTML = `<div class="muted">sets: ${sets.map(s => esc(s.name) + ' (' + s.questions + ')').join(', ') || 'none'}</div>`;
+  const keys = ['doc_hit@5', 'doc_recall@10', 'doc_mrr', 'doc_ndcg@10', 'chunk_recall@10', 'chunk_ndcg@10', 'mean_latency_ms'];
+  $('#evalRuns').innerHTML = runs.length ? `<table><tr><th>run</th><th>set</th><th>label</th><th>config</th>${keys.map(k => '<th>' + k + '</th>').join('')}</tr>` + runs.map(r => `<tr>
+    <td>${r.id}</td><td>${esc(r.set)}</td><td>${esc(r.label || '')}</td><td class="muted">${esc(JSON.stringify(r.config))}</td>${keys.map(k => '<td>' + (r.metrics[k] ?? '–') + '</td>').join('')}</tr>`).join('') + '</table>' : '<div class="muted">no eval runs yet</div>';
+}
+$('#evalRun').addEventListener('click', async () => {
+  $('#evalStatus').textContent = 'running…';
+  try {
+    const body = { set: $('#evalSet').value, label: $('#evalLabel').value || null, use_planner: $('#evalPlanner').checked, use_rerank: $('#evalRerank').checked, second_pass: $('#evalSecond').checked, rerank_provider: $('#evalRerankProvider').value || null };
+    const r = await api('/api/eval/run', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    $('#evalStatus').textContent = `run ${r.run_id}: ${Object.entries(r.metrics).map(([k, v]) => k + '=' + v).join(' ')}`;
+    loadEval();
+  } catch (e) { $('#evalStatus').textContent = 'error: ' + e.message; }
+});
+
+loadHealth(); setInterval(loadHealth, 15000);
+</script>
+</body>
+</html>

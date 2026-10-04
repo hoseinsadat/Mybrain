@@ -1,0 +1,7 @@
+# One JSON object per line. gold_docs = filename or title substrings (resolved to ids on load); gold_chunk_ids optional.
+{"qid": "q01", "question": "Who is the CFO of Pars Holding and since when?", "lang": "en", "type": "lookup", "gold_docs": ["pars_memo"], "gold_answer": "Ali Rezaei, since 2023"}
+{"qid": "q02", "question": "مدیر مالی هلدینگ پارس کیست؟", "lang": "fa", "type": "lookup", "gold_docs": ["pars_memo"], "gold_answer": "علی رضایی"}
+{"qid": "q03", "question": "What do we know about Ali Rezaei?", "lang": "en", "type": "entity", "gold_docs": ["pars_memo"]}
+{"qid": "q04", "question": "Which of our portfolio contacts has worked at Bank Melli?", "lang": "en", "type": "multi_hop", "gold_docs": ["pars_memo"]}
+{"qid": "q05", "question": "What was the 2024 budget for the Tehran Metro line 7 extension?", "lang": "en", "type": "lookup", "gold_docs": ["metro"], "gold_answer": "2 trillion rials"}
+{"qid": "q06", "question": "Who introduced Pars Holding to the Metro project?", "lang": "en", "type": "unanswerable", "gold_docs": []}

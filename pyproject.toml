@@ -1,0 +1,51 @@
+[project]
+name = "mybrain"
+version = "0.1.0"
+description = "Personal knowledge brain: hybrid multilingual RAG with an entity layer for people and companies"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "psycopg[binary,pool]>=3.2",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "httpx>=0.27",
+    "python-multipart>=0.0.9",
+    "anthropic>=1.0",
+    "google-genai>=1.0",
+    "pymupdf>=1.24",
+    "python-docx>=1.1",
+    "python-pptx>=1.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
+[project.scripts]
+mybrain-worker = "mybrain.ingest.worker:main"
+mybrain-migrate = "mybrain.db:main"
+mybrain-eval = "mybrain.evalx.run:main"
+mybrain-ingest = "scripts.ingest_dir:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["mybrain*", "scripts*"]
+
+[tool.setuptools.package-data]
+mybrain = ["migrations/*.sql", "ui/*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

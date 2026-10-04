@@ -1,0 +1,8 @@
+# Public HTTPS front door (profile "public"). Generate BASIC_HASH with: docker run --rm caddy:2 caddy hash-password --plaintext 'your-password'
+{$DOMAIN} {
+    encode gzip
+    basic_auth {
+        {$BASIC_USER} {$BASIC_HASH}
+    }
+    reverse_proxy api:8000
+}
